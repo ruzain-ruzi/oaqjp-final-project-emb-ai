@@ -8,12 +8,29 @@ def emotion_detector(text_to_analyze):
         "grpc-metadata-mm-model-id": "emotion_aggregated-workflow_lang_en_stock"
     }
 
-    payload = { "raw_document": { "text": text_to_analyze } }
+    payload = {
+        "raw_document": {
+            "text": text_to_analyze
+        }
+    }
 
     response = requests.post(url, headers=headers, json=payload)
+
+    # 🔥 ERROR HANDLING FOR BLANK INPUT → status_code 400
+    if response.status_code == 400:
+        return {
+            "anger": None,+
+            "disgust": None,
+            "fear": None,
+            "joy": None,
+            "sadness": None,
+            "dominant_emotion": None
+        }
+
+    # Normal response parsing
     result = json.loads(response.text)
 
-    # 🔍 Verify structure
+    # Graceful handling if predictions are missing
     if "emotionPredictions" not in result:
         return {
             "anger": None,
@@ -21,28 +38,15 @@ def emotion_detector(text_to_analyze):
             "fear": None,
             "joy": None,
             "sadness": None,
-            "dominant_emotion": None,
-            "error": "Invalid response format"
+            "dominant_emotion": None
         }
 
     prediction = result["emotionPredictions"][0]
 
-    # Some responses put emotions under "emotion"
-    # Others put it directly as "emotionScores"
     if "emotion" in prediction and "emotion" in prediction["emotion"]:
         emotions = prediction["emotion"]["emotion"]
-    elif "emotion" in prediction:
-        emotions = prediction["emotion"]
     else:
-        return {
-            "anger": None,
-            "disgust": None,
-            "fear": None,
-            "joy": None,
-            "sadness": None,
-            "dominant_emotion": None,
-            "error": "Emotion data not found"
-        }
+        emotions = prediction["emotion"]
 
     anger = emotions.get("anger", 0)
     disgust = emotions.get("disgust", 0)
@@ -50,14 +54,14 @@ def emotion_detector(text_to_analyze):
     joy = emotions.get("joy", 0)
     sadness = emotions.get("sadness", 0)
 
-    # dominant emotion
     emotion_scores = {
         "anger": anger,
         "disgust": disgust,
         "fear": fear,
         "joy": joy,
-        "sadness": sadness,
+        "sadness": sadness
     }
+
     dominant = max(emotion_scores, key=emotion_scores.get)
 
     return {
